@@ -48,6 +48,7 @@ const propTypes = forbidExtraProps({
   renderDayContents: PropTypes.func,
   firstDayOfWeek: DayOfWeekShape,
   setMonthHeight: PropTypes.func,
+  isYearsEnabled: PropTypes.bool,
 
   focusedDate: momentPropTypes.momentObj, // indicates focusable day
   isFocused: PropTypes.bool, // indicates whether or not to move focus to focusable day
@@ -196,7 +197,7 @@ class CalendarMonth extends React.Component {
             verticalScrollable && styles.CalendarMonth_caption__verticalScrollable,
           )}
         >
-          {this.props.isYearsEnabled ? (
+          {isYearsEnabled ? (
             <MonthYearSwitch
               date={month}
               onSelectMonth={onSelectMonth}
