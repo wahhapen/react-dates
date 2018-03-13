@@ -16,7 +16,8 @@ import isTransitionEndSupported from '../utils/isTransitionEndSupported';
 import getTransformStyles from '../utils/getTransformStyles';
 import getCalendarMonthWidth from '../utils/getCalendarMonthWidth';
 import toISOMonthString from '../utils/toISOMonthString';
-import isAfterDay from '../utils/isAfterDay';
+import isPrevMonth from '../utils/isPrevMonth';
+import isNextMonth from '../utils/isNextMonth';
 
 import ScrollableOrientationShape from '../shapes/ScrollableOrientationShape';
 import DayOfWeekShape from '../shapes/DayOfWeekShape';
@@ -40,6 +41,8 @@ const propTypes = forbidExtraProps({
   onDayClick: PropTypes.func,
   onDayMouseEnter: PropTypes.func,
   onDayMouseLeave: PropTypes.func,
+  onMonthChange: PropTypes.func,
+  onYearChange: PropTypes.func,
   onMonthTransitionEnd: PropTypes.func,
   renderMonth: PropTypes.func,
   renderCalendarDay: PropTypes.func,
@@ -49,6 +52,7 @@ const propTypes = forbidExtraProps({
   focusedDate: momentPropTypes.momentObj, // indicates focusable day
   isFocused: PropTypes.bool, // indicates whether or not to move focus to focusable day
   firstDayOfWeek: DayOfWeekShape,
+  isYearsEnabled: PropTypes.bool,
   setCalendarMonthHeights: PropTypes.func,
   isRTL: PropTypes.bool,
   transitionDuration: nonNegativeInteger,
@@ -71,6 +75,8 @@ const defaultProps = {
   onDayMouseEnter() {},
   onDayMouseLeave() {},
   onMonthTransitionEnd() {},
+  onMonthChange() {},
+  onYearChange() {},
   renderMonth: null,
   renderCalendarDay: undefined,
   renderDayContents: null,
@@ -78,6 +84,7 @@ const defaultProps = {
   daySize: DAY_SIZE,
   focusedDate: null,
   isFocused: false,
+  isYearsEnabled: false,
   firstDayOfWeek: null,
   setCalendarMonthHeights() {},
   isRTL: false,
@@ -115,6 +122,8 @@ class CalendarMonthGrid extends React.Component {
     this.isTransitionEndSupported = isTransitionEndSupported();
     this.onTransitionEnd = this.onTransitionEnd.bind(this);
     this.setContainerRef = this.setContainerRef.bind(this);
+    this.selectMonth = this.selectMonth.bind(this);
+    this.selectYear = this.selectYear.bind(this);
 
     this.locale = moment.locale();
   }
@@ -141,12 +150,15 @@ class CalendarMonthGrid extends React.Component {
     let newMonths = months;
 
     if (hasMonthChanged && !hasNumberOfMonthsChanged) {
-      if (isAfterDay(initialMonth, this.props.initialMonth)) {
+      if (isNextMonth(this.props.initialMonth, initialMonth)) {
         newMonths = months.slice(1);
         newMonths.push(months[months.length - 1].clone().add(1, 'month'));
-      } else {
+      } else if (isPrevMonth(this.props.initialMonth, initialMonth)) {
         newMonths = months.slice(0, months.length - 1);
         newMonths.unshift(months[0].clone().subtract(1, 'month'));
+      } else {
+        const withoutTransitionMonths = orientation === VERTICAL_SCROLLABLE;
+        newMonths = getMonths(initialMonth, numberOfMonths, withoutTransitionMonths);
       }
     }
 
@@ -220,6 +232,30 @@ class CalendarMonthGrid extends React.Component {
     }
   }
 
+  selectMonth(currentMonth, newMonthVal) {
+    const newMonth = currentMonth.clone();
+    const { orientation } = this.props;
+    const { months } = this.state;
+    const withoutTransitionMonths = orientation === VERTICAL_SCROLLABLE;
+    let initialMonthSubtraction = months.indexOf(currentMonth);
+    if (!withoutTransitionMonths) initialMonthSubtraction -= 1;
+
+    newMonth.set('month', newMonthVal).subtract(initialMonthSubtraction, 'months');
+    this.props.onMonthChange(newMonth);
+  }
+
+  selectYear(currentMonth, newYearVal) {
+    const newMonth = currentMonth.clone();
+    const { orientation } = this.props;
+    const { months } = this.state;
+    const withoutTransitionMonths = orientation === VERTICAL_SCROLLABLE;
+    let initialMonthSubtraction = months.indexOf(currentMonth);
+    if (!withoutTransitionMonths) initialMonthSubtraction -= 1;
+
+    newMonth.set('year', newYearVal).subtract(initialMonthSubtraction, 'months');
+    this.props.onYearChange(newMonth);
+  }
+
   render() {
     const {
       enableOutsideDays,
@@ -246,6 +282,7 @@ class CalendarMonthGrid extends React.Component {
       phrases,
       dayAriaLabelFormat,
       transitionDuration,
+      isYearsEnabled,
     } = this.props;
 
     const { months } = this.state;
@@ -255,9 +292,10 @@ class CalendarMonthGrid extends React.Component {
 
     const calendarMonthWidth = getCalendarMonthWidth(daySize);
 
-    const width = isVertical || isVerticalScrollable ?
-      calendarMonthWidth :
-      (numberOfMonths + 2) * calendarMonthWidth;
+    const width =
+      isVertical || isVerticalScrollable
+        ? calendarMonthWidth
+        : (numberOfMonths + 2) * calendarMonthWidth;
 
     return (
       <div
@@ -267,9 +305,10 @@ class CalendarMonthGrid extends React.Component {
           isVertical && styles.CalendarMonthGrid__vertical,
           isVerticalScrollable && styles.CalendarMonthGrid__vertical_scrollable,
           isAnimating && styles.CalendarMonthGrid__animating,
-          isAnimating && transitionDuration && {
-            transition: `transform ${transitionDuration}ms ease-in-out`,
-          },
+          isAnimating &&
+            transitionDuration && {
+              transition: `transform ${transitionDuration}ms ease-in-out`,
+            },
           {
             ...getTransformStyles(transformValue),
             width,
@@ -279,8 +318,8 @@ class CalendarMonthGrid extends React.Component {
         onTransitionEnd={onMonthTransitionEnd}
       >
         {months.map((month, i) => {
-          const isVisible = (i >= firstVisibleMonthIndex)
-            && (i < firstVisibleMonthIndex + numberOfMonths);
+          const isVisible =
+            i >= firstVisibleMonthIndex && i < firstVisibleMonthIndex + numberOfMonths;
           const hideForAnimation = i === 0 && !isVisible;
           const showForAnimation = i === 0 && isAnimating && isVisible;
           const monthString = toISOMonthString(month);
@@ -290,18 +329,23 @@ class CalendarMonthGrid extends React.Component {
               {...css(
                 isHorizontal && styles.CalendarMonthGrid_month__horizontal,
                 hideForAnimation && styles.CalendarMonthGrid_month__hideForAnimation,
-                showForAnimation && !isVertical && !isRTL && {
-                  position: 'absolute',
-                  left: -calendarMonthWidth,
-                },
-                showForAnimation && !isVertical && isRTL && {
-                  position: 'absolute',
-                  right: 0,
-                },
-                showForAnimation && isVertical && {
-                  position: 'absolute',
-                  top: -this.calendarMonthHeights[0],
-                },
+                showForAnimation &&
+                  !isVertical &&
+                  !isRTL && {
+                    position: 'absolute',
+                    left: -calendarMonthWidth,
+                  },
+                showForAnimation &&
+                  !isVertical &&
+                  isRTL && {
+                    position: 'absolute',
+                    right: 0,
+                  },
+                showForAnimation &&
+                  isVertical && {
+                    position: 'absolute',
+                    top: -this.calendarMonthHeights[0],
+                  },
                 !isVisible && !isAnimating && styles.CalendarMonthGrid_month__hidden,
               )}
             >
@@ -315,6 +359,8 @@ class CalendarMonthGrid extends React.Component {
                 onDayMouseEnter={onDayMouseEnter}
                 onDayMouseLeave={onDayMouseLeave}
                 onDayClick={onDayClick}
+                onSelectMonth={this.selectMonth}
+                onSelectYear={this.selectYear}
                 renderMonth={renderMonth}
                 renderCalendarDay={renderCalendarDay}
                 renderDayContents={renderDayContents}
@@ -323,7 +369,10 @@ class CalendarMonthGrid extends React.Component {
                 focusedDate={isVisible ? focusedDate : null}
                 isFocused={isFocused}
                 phrases={phrases}
-                setMonthHeight={(height) => { this.setMonthHeight(height, i); }}
+                isYearsEnabled={isYearsEnabled}
+                setMonthHeight={(height) => {
+                  this.setMonthHeight(height, i);
+                }}
                 dayAriaLabelFormat={dayAriaLabelFormat}
               />
             </div>

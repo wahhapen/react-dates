@@ -66,6 +66,8 @@ const propTypes = forbidExtraProps({
   hideKeyboardShortcutsPanel: PropTypes.bool,
   daySize: nonNegativeInteger,
   noBorder: PropTypes.bool,
+  onMonthChange: PropTypes.func,
+  onYearChange: PropTypes.func,
 
   navPrev: PropTypes.node,
   navNext: PropTypes.node,
@@ -127,6 +129,8 @@ const defaultProps = {
 
   onPrevMonthClick() {},
   onNextMonthClick() {},
+  onMonthChange() {},
+  onYearChange() {},
   onOutsideClick() {},
 
   renderCalendarDay: undefined,
@@ -211,6 +215,8 @@ export default class DayPickerRangeController extends React.Component {
     this.onMultiplyScrollableMonths = this.onMultiplyScrollableMonths.bind(this);
     this.getFirstFocusableDay = this.getFirstFocusableDay.bind(this);
     this.setDayPickerRef = this.setDayPickerRef.bind(this);
+    this.onMonthChange = this.onMonthChange.bind(this);
+    this.onYearChange = this.onYearChange.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -263,9 +269,8 @@ export default class DayPickerRangeController extends React.Component {
       recomputeDayHighlighted = true;
     }
 
-    const recomputePropModifiers = (
-      recomputeOutsideRange || recomputeDayBlocked || recomputeDayHighlighted
-    );
+    const recomputePropModifiers =
+      recomputeOutsideRange || recomputeDayBlocked || recomputeDayHighlighted;
 
     const didStartDateChange = startDate !== prevStartDate;
     const didEndDateChange = endDate !== prevEndDate;
@@ -274,11 +279,7 @@ export default class DayPickerRangeController extends React.Component {
     if (
       numberOfMonths !== prevNumberOfMonths ||
       enableOutsideDays !== prevEnableOutsideDays ||
-      (
-        initialVisibleMonth !== prevInitialVisibleMonth &&
-        !prevFocusedInput &&
-        didFocusChange
-      )
+      (initialVisibleMonth !== prevInitialVisibleMonth && !prevFocusedInput && didFocusChange)
     ) {
       const newMonthState = this.getStateForNewMonth(nextProps);
       const { currentMonth } = newMonthState;
@@ -298,7 +299,12 @@ export default class DayPickerRangeController extends React.Component {
       if (prevStartDate) {
         const startSpan = prevStartDate.clone().add(1, 'day');
         const endSpan = prevStartDate.clone().add(prevMinimumNights + 1, 'days');
-        modifiers = this.deleteModifierFromRange(modifiers, startSpan, endSpan, 'after-hovered-start');
+        modifiers = this.deleteModifierFromRange(
+          modifiers,
+          startSpan,
+          endSpan,
+          'after-hovered-start',
+        );
       }
     }
 
@@ -513,7 +519,12 @@ export default class DayPickerRangeController extends React.Component {
         };
 
         if (this.state.dateOffset && this.state.dateOffset.start && this.state.dateOffset.end) {
-          modifiers = this.deleteModifierFromRange(modifiers, this.state.dateOffset.start, this.state.dateOffset.end, 'hovered-offset');
+          modifiers = this.deleteModifierFromRange(
+            modifiers,
+            this.state.dateOffset.start,
+            this.state.dateOffset.end,
+            'hovered-offset',
+          );
         }
         modifiers = this.addModifierToRange(modifiers, start, end, 'hovered-offset');
       }
@@ -547,7 +558,12 @@ export default class DayPickerRangeController extends React.Component {
         if (startDate) {
           const startSpan = startDate.clone().add(1, 'day');
           const endSpan = startDate.clone().add(minimumNights + 1, 'days');
-          modifiers = this.deleteModifierFromRange(modifiers, startSpan, endSpan, 'after-hovered-start');
+          modifiers = this.deleteModifierFromRange(
+            modifiers,
+            startSpan,
+            endSpan,
+            'after-hovered-start',
+          );
 
           if (isSameDay(day, startDate)) {
             const newStartSpan = startDate.clone().add(1, 'day');
@@ -582,7 +598,12 @@ export default class DayPickerRangeController extends React.Component {
     modifiers = this.deleteModifier(modifiers, hoverDate, 'hovered');
 
     if (dateOffset) {
-      modifiers = this.deleteModifierFromRange(modifiers, this.state.dateOffset.start, this.state.dateOffset.end, 'hovered-offset');
+      modifiers = this.deleteModifierFromRange(
+        modifiers,
+        this.state.dateOffset.start,
+        this.state.dateOffset.end,
+        'hovered-offset',
+      );
     }
 
     if (startDate && !endDate && isAfterDay(hoverDate, startDate)) {
@@ -597,7 +618,12 @@ export default class DayPickerRangeController extends React.Component {
     if (startDate && isSameDay(day, startDate)) {
       const startSpan = startDate.clone().add(1, 'day');
       const endSpan = startDate.clone().add(minimumNights + 1, 'days');
-      modifiers = this.deleteModifierFromRange(modifiers, startSpan, endSpan, 'after-hovered-start');
+      modifiers = this.deleteModifierFromRange(
+        modifiers,
+        startSpan,
+        endSpan,
+        'after-hovered-start',
+      );
     }
 
     this.setState({
@@ -614,23 +640,29 @@ export default class DayPickerRangeController extends React.Component {
     const { currentMonth, visibleDays } = this.state;
 
     const newVisibleDays = {};
-    Object.keys(visibleDays).sort().slice(0, numberOfMonths + 1).forEach((month) => {
-      newVisibleDays[month] = visibleDays[month];
-    });
+    Object.keys(visibleDays)
+      .sort()
+      .slice(0, numberOfMonths + 1)
+      .forEach((month) => {
+        newVisibleDays[month] = visibleDays[month];
+      });
 
     const prevMonth = currentMonth.clone().subtract(2, 'months');
     const prevMonthVisibleDays = getVisibleDays(prevMonth, 1, enableOutsideDays, true);
 
     const newCurrentMonth = currentMonth.clone().subtract(1, 'month');
-    this.setState({
-      currentMonth: newCurrentMonth,
-      visibleDays: {
-        ...newVisibleDays,
-        ...this.getModifiers(prevMonthVisibleDays),
+    this.setState(
+      {
+        currentMonth: newCurrentMonth,
+        visibleDays: {
+          ...newVisibleDays,
+          ...this.getModifiers(prevMonthVisibleDays),
+        },
       },
-    }, () => {
-      onPrevMonthClick(newCurrentMonth.clone());
-    });
+      () => {
+        onPrevMonthClick(newCurrentMonth.clone());
+      },
+    );
   }
 
   onNextMonthClick() {
@@ -638,25 +670,62 @@ export default class DayPickerRangeController extends React.Component {
     const { currentMonth, visibleDays } = this.state;
 
     const newVisibleDays = {};
-    Object.keys(visibleDays).sort().slice(1).forEach((month) => {
-      newVisibleDays[month] = visibleDays[month];
-    });
+    Object.keys(visibleDays)
+      .sort()
+      .slice(1)
+      .forEach((month) => {
+        newVisibleDays[month] = visibleDays[month];
+      });
 
     const nextMonth = currentMonth.clone().add(numberOfMonths + 1, 'month');
     const nextMonthVisibleDays = getVisibleDays(nextMonth, 1, enableOutsideDays, true);
 
     const newCurrentMonth = currentMonth.clone().add(1, 'month');
-    this.setState({
-      currentMonth: newCurrentMonth,
-      visibleDays: {
-        ...newVisibleDays,
-        ...this.getModifiers(nextMonthVisibleDays),
+    this.setState(
+      {
+        currentMonth: newCurrentMonth,
+        visibleDays: {
+          ...newVisibleDays,
+          ...this.getModifiers(nextMonthVisibleDays),
+        },
       },
-    }, () => {
-      onNextMonthClick(newCurrentMonth.clone());
+      () => {
+        onNextMonthClick(newCurrentMonth.clone());
+      },
+    );
+  }
+
+  onMonthChange(newMonth) {
+    const { numberOfMonths, enableOutsideDays, orientation } = this.props;
+    const withoutTransitionMonths = orientation === VERTICAL_SCROLLABLE;
+    const newVisibleDays = getVisibleDays(
+      newMonth,
+      numberOfMonths,
+      enableOutsideDays,
+      withoutTransitionMonths,
+    );
+
+    this.setState({
+      currentMonth: newMonth.clone(),
+      visibleDays: this.getModifiers(newVisibleDays),
     });
   }
 
+  onYearChange(newMonth) {
+    const { numberOfMonths, enableOutsideDays, orientation } = this.props;
+    const withoutTransitionMonths = orientation === VERTICAL_SCROLLABLE;
+    const newVisibleDays = getVisibleDays(
+      newMonth,
+      numberOfMonths,
+      enableOutsideDays,
+      withoutTransitionMonths,
+    );
+
+    this.setState({
+      currentMonth: newMonth.clone(),
+      visibleDays: this.getModifiers(newVisibleDays),
+    });
+  }
   onMultiplyScrollableMonths() {
     const { numberOfMonths, enableOutsideDays } = this.props;
     const { currentMonth, visibleDays } = this.state;
@@ -675,11 +744,7 @@ export default class DayPickerRangeController extends React.Component {
 
   getFirstFocusableDay(newMonth) {
     const {
-      startDate,
-      endDate,
-      focusedInput,
-      minimumNights,
-      numberOfMonths,
+      startDate, endDate, focusedInput, minimumNights, numberOfMonths,
     } = this.props;
 
     let focusedDate = newMonth.clone().startOf('month');
@@ -693,7 +758,10 @@ export default class DayPickerRangeController extends React.Component {
 
     if (this.isBlocked(focusedDate)) {
       const days = [];
-      const lastVisibleDay = newMonth.clone().add(numberOfMonths - 1, 'months').endOf('month');
+      const lastVisibleDay = newMonth
+        .clone()
+        .add(numberOfMonths - 1, 'months')
+        .endOf('month');
       let currentDay = focusedDate.clone();
       while (!isAfterDay(currentDay, lastVisibleDay)) {
         currentDay = currentDay.clone().add(1, 'day');
@@ -703,7 +771,7 @@ export default class DayPickerRangeController extends React.Component {
       const viableDays = days.filter(day => !this.isBlocked(day));
 
       if (viableDays.length > 0) {
-        ([focusedDate] = viableDays);
+        [focusedDate] = viableDays;
       }
     }
 
@@ -734,17 +802,11 @@ export default class DayPickerRangeController extends React.Component {
       orientation,
       startDate,
     } = nextProps;
-    const initialVisibleMonthThunk = initialVisibleMonth || (
-      startDate ? () => startDate : () => this.today
-    );
+    const initialVisibleMonthThunk =
+      initialVisibleMonth || (startDate ? () => startDate : () => this.today);
     const currentMonth = initialVisibleMonthThunk();
     const withoutTransitionMonths = orientation === VERTICAL_SCROLLABLE;
-    const visibleDays = this.getModifiers(getVisibleDays(
-      currentMonth,
-      numberOfMonths,
-      enableOutsideDays,
-      withoutTransitionMonths,
-    ));
+    const visibleDays = this.getModifiers(getVisibleDays(currentMonth, numberOfMonths, enableOutsideDays, withoutTransitionMonths));
     return { currentMonth, visibleDays };
   }
 
@@ -770,9 +832,7 @@ export default class DayPickerRangeController extends React.Component {
 
     let updatedDaysAfterAddition = { ...updatedDays };
     if (enableOutsideDays) {
-      const monthsToUpdate = Object.keys(visibleDays).filter(monthKey => (
-        Object.keys(visibleDays[monthKey]).indexOf(iso) > -1
-      ));
+      const monthsToUpdate = Object.keys(visibleDays).filter(monthKey => Object.keys(visibleDays[monthKey]).indexOf(iso) > -1);
 
       updatedDaysAfterAddition = monthsToUpdate.reduce((days, monthIso) => {
         const month = updatedDays[monthIso] || visibleDays[monthIso];
@@ -834,9 +894,7 @@ export default class DayPickerRangeController extends React.Component {
 
     let updatedDaysAfterDeletion = { ...updatedDays };
     if (enableOutsideDays) {
-      const monthsToUpdate = Object.keys(visibleDays).filter(monthKey => (
-        Object.keys(visibleDays[monthKey]).indexOf(iso) > -1
-      ));
+      const monthsToUpdate = Object.keys(visibleDays).filter(monthKey => Object.keys(visibleDays[monthKey]).indexOf(iso) > -1);
 
       updatedDaysAfterDeletion = monthsToUpdate.reduce((days, monthIso) => {
         const month = updatedDays[monthIso] || visibleDays[monthIso];
@@ -882,15 +940,18 @@ export default class DayPickerRangeController extends React.Component {
 
   doesNotMeetMinimumNights(day) {
     const {
-      startDate,
-      isOutsideRange,
-      focusedInput,
-      minimumNights,
+      startDate, isOutsideRange, focusedInput, minimumNights,
     } = this.props;
     if (focusedInput !== END_DATE) return false;
 
     if (startDate) {
-      const dayDiff = day.diff(startDate.clone().startOf('day').hour(12), 'days');
+      const dayDiff = day.diff(
+        startDate
+          .clone()
+          .startOf('day')
+          .hour(12),
+        'days',
+      );
       return dayDiff < minimumNights && dayDiff >= 0;
     }
     return isOutsideRange(moment(day).subtract(minimumNights, 'days'));
@@ -899,8 +960,14 @@ export default class DayPickerRangeController extends React.Component {
   isDayAfterHoveredStartDate(day) {
     const { startDate, endDate, minimumNights } = this.props;
     const { hoverDate } = this.state || {};
-    return !!startDate && !endDate && !this.isBlocked(day) && isNextDay(hoverDate, day) &&
-      minimumNights > 0 && isSameDay(hoverDate, startDate);
+    return (
+      !!startDate &&
+      !endDate &&
+      !this.isBlocked(day) &&
+      isNextDay(hoverDate, day) &&
+      minimumNights > 0 &&
+      isSameDay(hoverDate, startDate)
+    );
   }
 
   isEndDate(day) {
@@ -917,12 +984,10 @@ export default class DayPickerRangeController extends React.Component {
     const { startDate, endDate } = this.props;
     const { hoverDate } = this.state || {};
 
-    const isForwardRange = !!startDate && !endDate &&
-      (day.isBetween(startDate, hoverDate) ||
-       isSameDay(hoverDate, day));
-    const isBackwardRange = !!endDate && !startDate &&
-      (day.isBetween(hoverDate, endDate) ||
-       isSameDay(hoverDate, day));
+    const isForwardRange =
+      !!startDate && !endDate && (day.isBetween(startDate, hoverDate) || isSameDay(hoverDate, day));
+    const isBackwardRange =
+      !!endDate && !startDate && (day.isBetween(hoverDate, endDate) || isSameDay(hoverDate, day));
 
     const isValidDayHovered = hoverDate && !this.isBlocked(hoverDate);
 
@@ -1032,6 +1097,8 @@ export default class DayPickerRangeController extends React.Component {
         verticalHeight={verticalHeight}
         noBorder={noBorder}
         transitionDuration={transitionDuration}
+        onMonthChange={this.onMonthChange}
+        onYearChange={this.onYearChange}
       />
     );
   }

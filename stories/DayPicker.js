@@ -2,10 +2,7 @@ import React from 'react';
 import { storiesOf } from '@storybook/react';
 import DayPicker from '../src/components/DayPicker';
 
-import {
-  VERTICAL_ORIENTATION,
-  VERTICAL_SCROLLABLE,
-} from '../src/constants';
+import { VERTICAL_ORIENTATION, VERTICAL_SCROLLABLE } from '../src/constants';
 
 const TestPrevIcon = () => (
   <span
@@ -46,23 +43,12 @@ const TestCustomInfoPanel = () => (
 );
 
 storiesOf('DayPicker', module)
-  .addWithInfo('default', () => (
-    <DayPicker />
-  ))
-  .addWithInfo('with custom day size', () => (
-    <DayPicker daySize={50} />
-  ))
-  .addWithInfo('single month', () => (
-    <DayPicker numberOfMonths={1} />
-  ))
-  .addWithInfo('3 months', () => (
-    <DayPicker numberOfMonths={3} />
-  ))
-  .addWithInfo('vertical', () => (
-    <DayPicker
-      numberOfMonths={2}
-      orientation={VERTICAL_ORIENTATION}
-    />
+  .addWithInfo('default', () => <DayPicker />)
+  .addWithInfo('with custom day size', () => <DayPicker daySize={50} />)
+  .addWithInfo('single month', () => <DayPicker numberOfMonths={1} />)
+  .addWithInfo('3 months', () => <DayPicker numberOfMonths={3} />)
+  .addWithInfo('single month with years enabled', () => (
+    <DayPicker numberOfMonths={1} isYearsEnabled />
   ))
   .addWithInfo('vertically scrollable with 12 months', () => (
     <div
@@ -71,62 +57,29 @@ storiesOf('DayPicker', module)
         width: 320,
       }}
     >
-      <DayPicker
-        numberOfMonths={12}
-        orientation={VERTICAL_SCROLLABLE}
-      />
+      <DayPicker numberOfMonths={12} orientation={VERTICAL_SCROLLABLE} />
     </div>
   ))
   .addWithInfo('vertical with custom day size', () => (
-    <DayPicker
-      numberOfMonths={2}
-      orientation={VERTICAL_ORIENTATION}
-      daySize={50}
-    />
+    <DayPicker numberOfMonths={2} orientation={VERTICAL_ORIENTATION} daySize={50} />
   ))
   .addWithInfo('vertical with custom height', () => (
-    <DayPicker
-      numberOfMonths={2}
-      orientation={VERTICAL_ORIENTATION}
-      verticalHeight={568}
-    />
+    <DayPicker numberOfMonths={2} orientation={VERTICAL_ORIENTATION} verticalHeight={568} />
   ))
   .addWithInfo('with custom arrows', () => (
-    <DayPicker
-      navPrev={<TestPrevIcon />}
-      navNext={<TestNextIcon />}
-    />
+    <DayPicker navPrev={<TestPrevIcon />} navNext={<TestNextIcon />} />
   ))
   .addWithInfo('with custom details', () => (
-    <DayPicker
-      renderDayContents={day => (day.day() % 6 === 5 ? '😻' : day.format('D'))}
-    />
+    <DayPicker renderDayContents={day => (day.day() % 6 === 5 ? '😻' : day.format('D'))} />
   ))
   .addWithInfo('vertical with fixed-width container', () => (
     <div style={{ width: '400px' }}>
-      <DayPicker
-        numberOfMonths={2}
-        orientation={VERTICAL_ORIENTATION}
-      />
+      <DayPicker numberOfMonths={2} orientation={VERTICAL_ORIENTATION} />
     </div>
   ))
   .addWithInfo('with info panel', () => (
-    <DayPicker
-      renderCalendarInfo={() => (
-        <TestCustomInfoPanel />
-      )}
-    />
+    <DayPicker renderCalendarInfo={() => <TestCustomInfoPanel />} />
   ))
-  .addWithInfo('with custom week day format', () => (
-    <DayPicker
-      weekDayFormat="ddd"
-    />
-  ))
-  .addWithInfo('with no animation', () => (
-    <DayPicker
-      transitionDuration={0}
-    />
-  ))
-  .addWithInfo('noBorder', () => (
-    <DayPicker noBorder />
-  ));
+  .addWithInfo('with custom week day format', () => <DayPicker weekDayFormat="ddd" />)
+  .addWithInfo('with no animation', () => <DayPicker transitionDuration={0} />)
+  .addWithInfo('noBorder', () => <DayPicker noBorder />);

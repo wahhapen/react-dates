@@ -13,6 +13,7 @@ import getPhrasePropTypes from '../utils/getPhrasePropTypes';
 
 import CalendarWeek from './CalendarWeek';
 import CalendarDay from './CalendarDay';
+import MonthYearSwitch from './MonthYearSwitch';
 
 import calculateDimension from '../utils/calculateDimension';
 import getCalendarMonthWeeks from '../utils/getCalendarMonthWeeks';
@@ -40,6 +41,8 @@ const propTypes = forbidExtraProps({
   onDayClick: PropTypes.func,
   onDayMouseEnter: PropTypes.func,
   onDayMouseLeave: PropTypes.func,
+  onSelectMonth: PropTypes.func,
+  onSelectYear: PropTypes.func,
   renderMonth: PropTypes.func,
   renderCalendarDay: PropTypes.func,
   renderDayContents: PropTypes.func,
@@ -60,19 +63,22 @@ const defaultProps = {
   isVisible: true,
   enableOutsideDays: false,
   modifiers: {},
+  onSelectMonth() {},
+  onSelectYear() {},
   orientation: HORIZONTAL_ORIENTATION,
   daySize: DAY_SIZE,
   onDayClick() {},
   onDayMouseEnter() {},
   onDayMouseLeave() {},
   renderMonth: null,
-  renderCalendarDay: props => (<CalendarDay {...props} />),
+  renderCalendarDay: props => <CalendarDay {...props} />,
   renderDayContents: null,
   firstDayOfWeek: null,
   setMonthHeight() {},
 
   focusedDate: null,
   isFocused: false,
+  isYearsEnabled: false,
 
   // i18n
   monthFormat: 'MMMM YYYY', // english locale
@@ -103,9 +109,11 @@ class CalendarMonth extends React.Component {
 
   componentWillReceiveProps(nextProps) {
     const { month, enableOutsideDays, firstDayOfWeek } = nextProps;
-    if (!month.isSame(this.props.month)
-        || enableOutsideDays !== this.props.enableOutsideDays
-        || firstDayOfWeek !== this.props.firstDayOfWeek) {
+    if (
+      !month.isSame(this.props.month) ||
+      enableOutsideDays !== this.props.enableOutsideDays ||
+      firstDayOfWeek !== this.props.firstDayOfWeek
+    ) {
       this.setState({
         weeks: getCalendarMonthWeeks(
           month,
@@ -152,6 +160,8 @@ class CalendarMonth extends React.Component {
       onDayClick,
       onDayMouseEnter,
       onDayMouseLeave,
+      onSelectMonth,
+      onSelectYear,
       renderMonth,
       renderCalendarDay,
       renderDayContents,
@@ -159,6 +169,7 @@ class CalendarMonth extends React.Component {
       focusedDate,
       isFocused,
       styles,
+      isYearsEnabled,
       phrases,
       dayAriaLabelFormat,
     } = this.props;
@@ -185,31 +196,37 @@ class CalendarMonth extends React.Component {
             verticalScrollable && styles.CalendarMonth_caption__verticalScrollable,
           )}
         >
-          <strong>{monthTitle}</strong>
+          {this.props.isYearsEnabled ? (
+            <MonthYearSwitch
+              date={month}
+              onSelectMonth={onSelectMonth}
+              onSelectYear={onSelectYear}
+            />
+          ) : (
+            monthTitle
+          )}
         </div>
 
-        <table
-          {...css(styles.CalendarMonth_table)}
-          role="presentation"
-        >
+        <table {...css(styles.CalendarMonth_table)} role="presentation">
           <tbody ref={this.setGridRef}>
             {weeks.map((week, i) => (
               <CalendarWeek key={i}>
-                {week.map((day, dayOfWeek) => renderCalendarDay({
-                  key: dayOfWeek,
-                  day,
-                  daySize,
-                  isOutsideDay: !day || day.month() !== month.month(),
-                  tabIndex: isVisible && isSameDay(day, focusedDate) ? 0 : -1,
-                  isFocused,
-                  onDayMouseEnter,
-                  onDayMouseLeave,
-                  onDayClick,
-                  renderDayContents,
-                  phrases,
-                  modifiers: modifiers[toISODateString(day)],
-                  ariaLabelFormat: dayAriaLabelFormat,
-                }))}
+                {week.map((day, dayOfWeek) =>
+                  renderCalendarDay({
+                    key: dayOfWeek,
+                    day,
+                    daySize,
+                    isOutsideDay: !day || day.month() !== month.month(),
+                    tabIndex: isVisible && isSameDay(day, focusedDate) ? 0 : -1,
+                    isFocused,
+                    onDayMouseEnter,
+                    onDayMouseLeave,
+                    onDayClick,
+                    renderDayContents,
+                    phrases,
+                    modifiers: modifiers[toISODateString(day)],
+                    ariaLabelFormat: dayAriaLabelFormat,
+                  }))}
               </CalendarWeek>
             ))}
           </tbody>
@@ -250,4 +267,3 @@ export default withStyles(({ reactDates: { color, font, spacing } }) => ({
     paddingBottom: 7,
   },
 }))(CalendarMonth);
-
